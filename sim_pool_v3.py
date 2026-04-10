@@ -160,11 +160,11 @@ with st.sidebar:
     # ── Salva / Carica ────────────────────────────────────────────────────────
     col_save, col_load = st.columns(2)
     with col_save:
-        if st.button("💾 Salva", use_container_width=True, help="Salva la configurazione corrente in pool_config.json"):
+        if st.button("💾 Salva", width="stretch", help="Salva la configurazione corrente in pool_config.json"):
             _save_config()
             st.success("Salvato!")
     with col_load:
-        if st.button("🔄 Carica", use_container_width=True, help="Ricarica la configurazione da pool_config.json"):
+        if st.button("🔄 Carica", width="stretch", help="Ricarica la configurazione da pool_config.json"):
             if _load_config():
                 st.success("Caricato!")
                 st.rerun()
@@ -584,7 +584,7 @@ for i in range(1, 5):
     fig.update_xaxes(gridcolor="rgba(255,255,255,0.04)", row=i, col=1)
     fig.update_yaxes(gridcolor="rgba(255,255,255,0.04)", row=i, col=1)
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -605,7 +605,7 @@ monthly["fees_mese"]    = monthly["fees_mese"].map(lambda x: f"${x:,.4f}")
 monthly["val_fine"]     = monthly["val_fine"].map(lambda x: f"${x:,.2f}")
 monthly["prezzo_fine"]  = monthly["prezzo_fine"].map(lambda x: f"${x:,.2f}")
 monthly.columns = ["Mese", "Fees ($)", "% in range", "Prezzo fine", "Valore pool"]
-st.dataframe(monthly, use_container_width=True, hide_index=True)
+st.dataframe(monthly, width="stretch", hide_index=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
