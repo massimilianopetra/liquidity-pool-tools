@@ -1,0 +1,22 @@
+{
+  "cfg_csv_path": "SOL_USDT_15m.csv",
+  "cfg_open_date": "2026-02-07",
+  "cfg_open_time": "09:00:00",
+  "cfg_p_min": 70.0,
+  "cfg_p_max": 102.0,
+  "cfg_input_mode": "Token (SOL + USDC)",
+  "cfg_sol_init": 4.0,
+  "cfg_usdc_init": 400.0,
+  "cfg_capital_init": null,
+  "cfg_p_open_init": null,
+  "cfg_fee_pct": 0.04,
+  "cfg_intra_mode": "Open \u2192 High \u2192 Low \u2192 Close",
+  "cfg_intra_steps": 1,
+  "cfg_zigzag_n": null,
+  "cfg_real_enabled": false,
+  "cfg_real_sol_now": null,
+  "cfg_real_usdc_now": null,
+  "cfg_real_fees_sol": null,
+  "cfg_real_fees_usdc": null,
+  "cfg_real_price_now": null
+}
