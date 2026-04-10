@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Pool largo",
+    "p_min": 70.0,
+    "p_max": 102.0,
+    "capital": 736.27,
+    "p_open": 84.7,
+    "opened_at": "2026-01-01",
+    "note": "range largo",
+    "last_price": 84.68,
+    "last_update": "2026-04-10 19:10:56",
+    "in_range": true,
+    "price_pct_pos": 45.88,
+    "balance_sol": 4.299611,
+    "balance_usdc": 372.093,
+    "balance_value": 736.1841,
+    "sol_pct": 49.5,
+    "usdc_pct": 50.5
+  },
+  {
+    "name": "Pool stretto",
+    "p_min": 80.3,
+    "p_max": 88.8,
+    "capital": 629.41,
+    "p_open": 84.7,
+    "opened_at": "2026-02-01",
+    "note": "range stretto",
+    "last_price": 84.68,
+    "last_update": "2026-04-10 19:10:56",
+    "in_range": true,
+    "price_pct_pos": 51.53,
+    "balance_sol": 3.511657,
+    "balance_usdc": 331.9728,
+    "balance_value": 629.3399,
+    "sol_pct": 47.3,
+    "usdc_pct": 52.7
+  }
+]
