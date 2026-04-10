@@ -4,16 +4,76 @@ pip install streamlit plotly pandas numpy
 streamlit run sim_pool_v3.py
 """
 
+import json
+import os
 import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from datetime import date, time as dtime
 
 st.set_page_config(page_title="Uniswap v3 Pool Simulator", page_icon="🌊", layout="wide")
 
 st.title("🌊 Uniswap v3 — Pool Simulator")
 st.caption("Simulazione fees e valore posizione su candele reali SOL/USDC")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SALVATAGGIO / CARICAMENTO CONFIGURAZIONE POOL
+# ─────────────────────────────────────────────────────────────────────────────
+
+POOL_CONFIG_FILE = "pool_config.json"
+
+# Tutti i key usati dalla sidebar
+_CFG_KEYS = [
+    "cfg_csv_path", "cfg_open_date", "cfg_open_time",
+    "cfg_p_min", "cfg_p_max",
+    "cfg_input_mode", "cfg_sol_init", "cfg_usdc_init",
+    "cfg_capital_init", "cfg_p_open_init",
+    "cfg_fee_pct",
+    "cfg_intra_mode", "cfg_intra_steps", "cfg_zigzag_n",
+    "cfg_real_enabled",
+    "cfg_real_sol_now", "cfg_real_usdc_now",
+    "cfg_real_fees_sol", "cfg_real_fees_usdc", "cfg_real_price_now",
+]
+
+
+def _save_config():
+    data = {}
+    for k in _CFG_KEYS:
+        v = st.session_state.get(k)
+        if isinstance(v, date):        # date (non-pandas)
+            data[k] = v.isoformat()
+        elif isinstance(v, dtime):     # time
+            data[k] = v.isoformat()
+        else:
+            data[k] = v
+    with open(POOL_CONFIG_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def _load_config() -> bool:
+    if not os.path.exists(POOL_CONFIG_FILE):
+        return False
+    with open(POOL_CONFIG_FILE) as f:
+        data = json.load(f)
+    for k, v in data.items():
+        if k not in _CFG_KEYS:
+            continue
+        if k == "cfg_open_date" and v is not None:
+            st.session_state[k] = date.fromisoformat(v)
+        elif k == "cfg_open_time" and v is not None:
+            st.session_state[k] = dtime.fromisoformat(v)
+        else:
+            st.session_state[k] = v
+    return True
+
+
+# Carica il config al primo avvio (se esiste)
+if "pool_config_initialized" not in st.session_state:
+    st.session_state["pool_config_initialized"] = True
+    _load_config()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MATEMATICA V3
@@ -97,32 +157,62 @@ def _estimate_points(mode, steps, zn):
 with st.sidebar:
     st.header("⚙️ Parametri")
 
+    # ── Salva / Carica ────────────────────────────────────────────────────────
+    col_save, col_load = st.columns(2)
+    with col_save:
+        if st.button("💾 Salva", use_container_width=True, help="Salva la configurazione corrente in pool_config.json"):
+            _save_config()
+            st.success("Salvato!")
+    with col_load:
+        if st.button("🔄 Carica", use_container_width=True, help="Ricarica la configurazione da pool_config.json"):
+            if _load_config():
+                st.success("Caricato!")
+                st.rerun()
+            else:
+                st.warning("Nessun file trovato.")
+
+    if os.path.exists(POOL_CONFIG_FILE):
+        mtime = os.path.getmtime(POOL_CONFIG_FILE)
+        st.caption(f"Config: `{POOL_CONFIG_FILE}` — {pd.Timestamp(mtime, unit='s').strftime('%d/%m/%Y %H:%M')}")
+
+    st.divider()
     st.subheader("1. File candele")
     csv_path = st.text_input(
         "Percorso file CSV",
         value="SOL_USDT_15m.csv",
+        key="cfg_csv_path",
         help="Percorso assoluto o relativo. Es: D:\\dati\\SOL_USDT_15m.csv"
     )
 
     st.divider()
     st.subheader("2. Data e ora apertura pool")
-    open_date = st.date_input("Data apertura", value=None, help="La simulazione parte da questa data")
-    open_time = st.time_input("Ora apertura", value=None, help="Ora esatta di apertura (UTC)")
+    open_date = st.date_input("Data apertura", value=None, key="cfg_open_date",
+                               help="La simulazione parte da questa data")
+    open_time = st.time_input("Ora apertura", value=None, key="cfg_open_time",
+                               help="Ora esatta di apertura (UTC)")
 
     st.divider()
     st.subheader("3. Range del pool")
-    p_min = st.number_input("Prezzo min ($)", min_value=1.0, value=105.0, step=1.0, format="%.2f")
-    p_max = st.number_input("Prezzo max ($)", min_value=1.0, value=178.0, step=1.0, format="%.2f")
+    p_min = st.number_input("Prezzo min ($)", min_value=1.0, value=105.0, step=1.0,
+                             format="%.2f", key="cfg_p_min")
+    p_max = st.number_input("Prezzo max ($)", min_value=1.0, value=178.0, step=1.0,
+                             format="%.2f", key="cfg_p_max")
 
     st.divider()
     st.subheader("4. Posizione iniziale")
-    input_mode = st.radio("Modalità input", ["Token (SOL + USDC)", "Capitale + prezzo apertura"])
+    input_mode = st.radio("Modalità input",
+                           ["Token (SOL + USDC)", "Capitale + prezzo apertura"],
+                           key="cfg_input_mode")
     if input_mode == "Token (SOL + USDC)":
-        sol_init  = st.number_input("SOL iniziali",  min_value=0.0, value=5.0,    step=0.01, format="%.4f")
-        usdc_init = st.number_input("USDC iniziali", min_value=0.0, value=500.0,  step=1.0,  format="%.2f")
+        sol_init  = st.number_input("SOL iniziali",  min_value=0.0, value=5.0,   step=0.01,
+                                     format="%.4f", key="cfg_sol_init")
+        usdc_init = st.number_input("USDC iniziali", min_value=0.0, value=500.0, step=1.0,
+                                     format="%.2f", key="cfg_usdc_init")
     else:
-        capital_init = st.number_input("Capitale ($)",        min_value=1.0, value=1000.0, step=10.0)
-        p_open_init  = st.number_input("Prezzo apertura ($)", min_value=1.0, value=140.0,  step=1.0)
+        capital_init = st.number_input("Capitale ($)",        min_value=1.0, value=1000.0,
+                                        step=10.0, key="cfg_capital_init")
+        p_open_init  = st.number_input("Prezzo apertura ($)", min_value=1.0, value=140.0,
+                                        step=1.0,  key="cfg_p_open_init")
 
     st.divider()
     st.subheader("5. Fee tier")
@@ -130,7 +220,8 @@ with st.sidebar:
         "Fee tier",
         options=[0.01, 0.04, 0.05, 0.3, 1.0],
         value=0.04,
-        format_func=lambda x: f"{x}%"
+        format_func=lambda x: f"{x}%",
+        key="cfg_fee_pct",
     )
     fee_tier = fee_pct / 100
 
@@ -146,11 +237,13 @@ with st.sidebar:
             "Zigzag L/H alternati",
             "Open → Mid → High → Mid → Low → Mid → Close",
         ],
-        index=1
+        index=1,
+        key="cfg_intra_mode",
     )
     intra_steps = st.slider(
         "Step interpolazione per ogni segmento",
         min_value=1, max_value=30, value=1,
+        key="cfg_intra_steps",
         help=(
             "1 = solo i punti chiave (O/H/L/C). "
             "N > 1 = aggiunge N-1 punti intermedi linearmente tra ogni coppia di punti. "
@@ -161,6 +254,7 @@ with st.sidebar:
         zigzag_n = st.slider(
             "Numero di oscillazioni zigzag",
             min_value=2, max_value=30, value=6,
+            key="cfg_zigzag_n",
             help="Quante volte il prezzo oscilla H→L (o L→H) dentro la candela."
         )
     else:
@@ -173,13 +267,19 @@ with st.sidebar:
     st.divider()
     st.subheader("7. Dati reali pool (opzionale)")
     st.caption("Inserisci i valori reali che vedi su Orca per confrontarli con la simulazione.")
-    real_enabled = st.checkbox("Abilita confronto con dati reali", value=False)
+    real_enabled = st.checkbox("Abilita confronto con dati reali", value=False,
+                                key="cfg_real_enabled")
     if real_enabled:
-        real_sol_now   = st.number_input("SOL attuali nel pool",        min_value=0.0, value=0.0, step=0.001, format="%.4f")
-        real_usdc_now  = st.number_input("USDC attuali nel pool",       min_value=0.0, value=0.0, step=0.01,  format="%.2f")
-        real_fees_sol  = st.number_input("Fees SOL accumulate (reali)", min_value=0.0, value=0.0, step=0.001, format="%.4f")
-        real_fees_usdc = st.number_input("Fees USDC accumulate (reali)",min_value=0.0, value=0.0, step=0.01,  format="%.2f")
-        real_price_now = st.number_input("Prezzo SOL attuale ($)",      min_value=1.0, value=79.0,step=0.5,   format="%.2f")
+        real_sol_now   = st.number_input("SOL attuali nel pool",        min_value=0.0, value=0.0,
+                                          step=0.001, format="%.4f", key="cfg_real_sol_now")
+        real_usdc_now  = st.number_input("USDC attuali nel pool",       min_value=0.0, value=0.0,
+                                          step=0.01,  format="%.2f", key="cfg_real_usdc_now")
+        real_fees_sol  = st.number_input("Fees SOL accumulate (reali)", min_value=0.0, value=0.0,
+                                          step=0.001, format="%.4f", key="cfg_real_fees_sol")
+        real_fees_usdc = st.number_input("Fees USDC accumulate (reali)",min_value=0.0, value=0.0,
+                                          step=0.01,  format="%.2f", key="cfg_real_fees_usdc")
+        real_price_now = st.number_input("Prezzo SOL attuale ($)",      min_value=1.0, value=79.0,
+                                          step=0.5,   format="%.2f", key="cfg_real_price_now")
     else:
         real_sol_now = real_usdc_now = real_fees_sol = real_fees_usdc = real_price_now = 0.0
 
@@ -194,7 +294,6 @@ def load_csv(file):
     df = df.sort_values("timestamp").reset_index(drop=True)
     return df
 
-import os
 if not csv_path or not os.path.exists(csv_path):
     st.info(f"👈 Inserisci il percorso del file CSV nella sidebar. File cercato: {csv_path}")
     st.stop()
@@ -365,10 +464,6 @@ with c4: st.metric("Impermanent Loss",      f"${il:,.2f}",         delta=f"{il_p
 with c5: st.metric("Tempo in range",        f"{pct_in_range:.1f}%")
 with c6: st.metric("Candele analizzate",    f"{bars_total:,}")
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# GRAFICO PRINCIPALE
-# ─────────────────────────────────────────────────────────────────────────────
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFRONTO CON DATI REALI
