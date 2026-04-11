@@ -446,6 +446,11 @@ async def daemon_loop(token: str, chat_id: str | None, env: dict):
             logging.FileHandler(LOG_FILE, encoding="utf-8"),
         ]
     )
+    # Silenzia i logger verbosi di httpx e telegram (getUpdates polling)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("telegram").setLevel(logging.WARNING)
+    logging.getLogger("apscheduler").setLevel(logging.WARNING)
     log = logging.getLogger("monitor_lp")
     log.info(f"Log su file: {LOG_FILE}")
     if not chat_id:
