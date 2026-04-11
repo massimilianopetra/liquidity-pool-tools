@@ -1,0 +1,30 @@
+[Unit]
+Description=Monitor LP v3 — Uniswap v3 pool watcher daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# ── Modifica questi percorsi con i tuoi ──────────────────────────────────────
+# Utente con cui gira il processo (non usare root)
+User=YOUR_USER
+
+# Cartella del progetto (dove si trovano monitor_lp.py e pools.json)
+WorkingDirectory=/home/YOUR_USER/monitor_lp
+
+# Percorso completo di python nel tuo virtualenv (o python3 di sistema)
+ExecStart=/home/YOUR_USER/monitor_lp/.venv/bin/python monitor_lp.py --daemon
+
+# Riavvio automatico in caso di crash
+Restart=on-failure
+RestartSec=15s
+
+# Log: visibili con → journalctl -u monitor-lp -f
+StandardOutput=journal
+StandardError=journal
+
+# Limiti di sicurezza (buona pratica per daemon)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
