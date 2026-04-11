@@ -632,7 +632,7 @@ async def daemon_loop(token: str, chat_id: str | None, env: dict):
                     pool["usdc_pct"]      = round(comp["usdc_pct"],  1)
 
             # ── Riepilogo: al primo tick e poi ogni summary_every tick ──────
-            if tick == 1 or (tick > 0 and tick % summary_every == 0):
+            if tick == 0 or (tick > 0 and tick % summary_every == 0):
                 await send_summary(pools, price, stats)
                 save_pools(pools)
 
