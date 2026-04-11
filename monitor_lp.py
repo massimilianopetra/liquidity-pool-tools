@@ -53,7 +53,7 @@ ENV_FILE          = "monitor_lp.env"
 LOG_DIR           = "log"
 LOG_FILE          = os.path.join(LOG_DIR, "monitor_lp_daemon.log")
 
-SUMMARY_EVERY     = 120   # campioni → 1 ora
+SUMMARY_EVERY     = 120   # campioni → 1 ora (override con SUMMARY_EVERY in .env)
 ACK_TIMEOUT       = 10    # campioni → 5 min per premere ACK prima del reminder
 
 DEFAULT_POOLS = [
@@ -436,7 +436,7 @@ class AlertState:
 # DAEMON MAIN LOOP
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def daemon_loop(token: str, chat_id: str | None):
+async def daemon_loop(token: str, chat_id: str | None, env: dict):
     """Loop principale del daemon: polling Binance + logica notifiche Telegram."""
     os.makedirs(LOG_DIR, exist_ok=True)
     logging.basicConfig(
@@ -530,11 +530,19 @@ async def daemon_loop(token: str, chat_id: str | None):
     # pool_name → True/False (era in range al tick precedente?)
     prev_in_range: dict = {}
 
+    # Leggi SUMMARY_EVERY da .env se presente
+    try:
+        summary_every = int(env.get("SUMMARY_EVERY", SUMMARY_EVERY))
+        if summary_every < 1:
+            summary_every = SUMMARY_EVERY
+    except (ValueError, TypeError):
+        summary_every = SUMMARY_EVERY
+
     pools    = load_pools()
     history  = []
     tick     = 0
 
-    log.info("Daemon avviato.")
+    log.info(f"Daemon avviato. Riepilogo ogni {summary_every} tick ({summary_every * INTERVAL_SEC // 60} min).")
 
     # Invia messaggio di avvio (solo se chat_id configurato)
     if chat_id:
@@ -618,8 +626,8 @@ async def daemon_loop(token: str, chat_id: str | None):
                     pool["sol_pct"]       = round(comp["sol_pct"],   1)
                     pool["usdc_pct"]      = round(comp["usdc_pct"],  1)
 
-            # ── Riepilogo orario ─────────────────────────────────────────────
-            if tick > 0 and tick % SUMMARY_EVERY == 0:
+            # ── Riepilogo: al primo tick e poi ogni summary_every tick ──────
+            if tick == 1 or (tick > 0 and tick % summary_every == 0):
                 await send_summary(pools, price, stats)
                 save_pools(pools)
 
@@ -747,7 +755,7 @@ def main():
             print(f"  Manda /start al bot su Telegram per ottenere il tuo Chat ID,")
             print(f"  poi aggiungilo a {ENV_FILE} e riavvia.")
 
-        asyncio.run(daemon_loop(token, chat_id))
+        asyncio.run(daemon_loop(token, chat_id, env))
     else:
         interactive_loop()
 

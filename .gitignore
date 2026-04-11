@@ -30,5 +30,8 @@ Thumbs.db
 # Dati CSV (file grandi — generati localmente con download_candles.py)
 SOL_USDT_15m.csv
 
+# pool
+pools.json
+
 #log
 log/
